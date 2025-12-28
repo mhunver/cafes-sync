@@ -10,11 +10,30 @@
  *
  * Learn more at https://developers.cloudflare.com/workers/
  */
+type Env = {
+	GOOGLE_PLACES_KEY: string;
+	CAFES_BUCKET: R2Bucket;
+};
+
+type GooglePlace = {
+	place_id: string;
+	name: string;
+	vicinity?: string;
+	rating?: number;
+	user_ratings_total?: number;
+	photos?: {
+		photo_reference: string;
+	}[];
+	opening_hours?: {
+		open_now?: boolean;
+	};
+	types?: string[];
+};
 
 
 
 export default {
-	async fetch(request: Request, env: any) {
+	async fetch(request: Request, env: Env) {
 		const url = new URL(request.url);
 
 		if (request.method === "OPTIONS") {
@@ -34,7 +53,9 @@ export default {
 				`https://maps.googleapis.com/maps/api/place/details/json?place_id=${id}&language=tr&key=${env.GOOGLE_PLACES_KEY}`
 			);
 
-			const data = await res.json();
+			const data = await res.json() as any;
+
+
 
 			return new Response(
 				JSON.stringify(data.result, null, 2),
@@ -54,13 +75,15 @@ export default {
 				`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=40.1553,26.4142&radius=5000&type=cafe&key=${env.GOOGLE_PLACES_KEY}`
 			);
 
-			const data = await googleRes.json();
+
+
+			const data = (await googleRes.json()) as { results: GooglePlace[] };
 
 
 			// console.log("GOOGLE DATA:", data.results?.length);
 			// console.log("FIRST CAFE:", data.results?.[0]);
 
-			const cafes = (data.results || []).map((place: any) => ({
+			const cafes = (data?.results as GooglePlace[] || []).map((place: any) => ({
 				id: place.place_id,
 				name: place.name,
 				location: place.vicinity,
